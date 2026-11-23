@@ -83,7 +83,7 @@ class AuditEvent(Base):
         Index("ix_audit_events_org_action", "organization_id", "action"),
         Index("ix_audit_events_resource", "resource_type", "resource_id"),
         Index("ix_audit_events_correlation", "correlation_id"),
-        Index("ix_audit_events_created_at", "organization_id", "created_at"),
+        Index("ix_audit_events_org_created_at", "organization_id", "created_at"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -161,7 +161,6 @@ class AuditEvent(Base):
     correlation_id: Mapped[Optional[str]] = mapped_column(
         String(100),
         nullable=True,
-        index=True,
     )
     model_version: Mapped[Optional[str]] = mapped_column(
         String(100),

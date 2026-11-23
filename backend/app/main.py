@@ -81,6 +81,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                 await conn.execute(text("PRAGMA busy_timeout=5000;"))
             await conn.run_sync(Base.metadata.create_all)
         logger.info("Database schema verified and active")
+
+        # Automatically ensure demo users exist in the database
+        try:
+            from scripts.seed_demo_data import seed
+            await seed()
+            logger.info("Demo dataset verified and active")
+        except Exception as seed_exc:
+            logger.warning("Demo dataset seeding note", error=str(seed_exc))
     except Exception as exc:
         if "already exists" in str(exc).lower():
             logger.info("Database schema already initialized by migrations")
