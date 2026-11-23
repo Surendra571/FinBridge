@@ -37,7 +37,12 @@ class Settings(BaseSettings):
     API_V1_PREFIX: str = "/api/v1"
 
     # CORS
-    ALLOWED_ORIGINS: str = "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000,http://localhost:8000,http://127.0.0.1:8000"
+    ALLOWED_ORIGINS: str = (
+        "http://localhost:5173,http://127.0.0.1:5173,"
+        "http://localhost:3000,http://127.0.0.1:3000,"
+        "http://localhost:8000,http://127.0.0.1:8000,"
+        "https://fin-bridge-gamma.vercel.app"
+    )
 
     @property
     def cors_origins(self) -> List[str]:
@@ -48,9 +53,10 @@ class Settings(BaseSettings):
             "http://127.0.0.1:3000",
             "http://localhost:8000",
             "http://127.0.0.1:8000",
+            "https://fin-bridge-gamma.vercel.app",
         ]
         if not self.ALLOWED_ORIGINS or self.ALLOWED_ORIGINS.strip() == "*":
-            return default_origins
+            return ["*"]
         configured = [origin.strip() for origin in self.ALLOWED_ORIGINS.split(",") if origin.strip()]
         return list(dict.fromkeys(configured + default_origins))
 
