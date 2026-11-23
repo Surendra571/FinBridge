@@ -82,7 +82,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             await conn.run_sync(Base.metadata.create_all)
         logger.info("Database schema verified and active")
     except Exception as exc:
-        logger.error("Database schema initialization warning", error=str(exc))
+        if "already exists" in str(exc).lower():
+            logger.info("Database schema already initialized by migrations")
+        else:
+            logger.warning("Database schema initialization note", error=str(exc))
 
     yield
     logger.info("Application shutting down")
