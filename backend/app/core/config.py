@@ -75,6 +75,10 @@ class Settings(BaseSettings):
     @classmethod
     def normalize_database_url(cls, v: str) -> str:
         if isinstance(v, str):
+            v = v.strip().strip('"').strip("'")
+            # Guard against accidentally pasting browser HTTPS dashboard URL
+            if v.startswith("http://") or v.startswith("https://"):
+                return "sqlite+aiosqlite:///./finbridge.db"
             if v.startswith("postgres://"):
                 return v.replace("postgres://", "postgresql+asyncpg://", 1)
             elif v.startswith("postgresql://") and not v.startswith("postgresql+asyncpg://"):

@@ -21,6 +21,30 @@ from app.api.v1.endpoints import (
 
 api_v1_router = APIRouter()
 
+@api_v1_router.get("", summary="API v1 root info")
+@api_v1_router.get("/", summary="API v1 root info")
+async def api_v1_root():
+    return {
+        "status": "online",
+        "api_version": "v1",
+        "docs": "/docs",
+        "endpoints": [
+            "/health",
+            "/auth",
+            "/organizations",
+            "/dashboard",
+            "/bank-accounts",
+            "/statements",
+            "/ledger",
+            "/reconciliation",
+            "/ai-reconciliation",
+            "/reviews",
+            "/audit",
+            "/integrations",
+            "/reports",
+        ],
+    }
+
 # Mount health endpoints
 api_v1_router.include_router(health.router)
 
