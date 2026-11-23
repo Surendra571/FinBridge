@@ -1,0 +1,61 @@
+services:
+  # ----------------------------------------------------------------------------
+  # FinBridge FastAPI Backend Service
+  # ----------------------------------------------------------------------------
+  - type: web
+    name: finbridge-api
+    runtime: python
+    region: oregon
+    plan: standard
+    rootDir: backend
+    buildCommand: "pip install -r requirements.txt && python -m alembic upgrade head"
+    startCommand: "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+    healthCheckPath: /api/v1/health/live
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.0
+      - key: ENVIRONMENT
+        value: production
+      - key: DEBUG
+        value: "false"
+      - key: APP_NAME
+        value: FinBridge
+      - key: LOG_LEVEL
+        value: INFO
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: finbridge-postgres
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: finbridge-redis
+          property: connectionString
+      - key: ALLOWED_ORIGINS
+        value: "https://finbridge-app.vercel.app,https://finbridge.vercel.app"
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "60"
+      - key: REFRESH_TOKEN_EXPIRE_DAYS
+        value: "7"
+
+  # ----------------------------------------------------------------------------
+  # FinBridge Redis (Rate limiting, task queues, idempotent operations)
+  # ----------------------------------------------------------------------------
+  - type: redis
+    name: finbridge-redis
+    region: oregon
+    plan: starter
+    ipAllowList: []
+
+# ------------------------------------------------------------------------------
+# Managed PostgreSQL Database
+# ------------------------------------------------------------------------------
+databases:
+  - name: finbridge-postgres
+    region: oregon
+    plan: standard
+    databaseName: finbridge
+    user: finbridge_user
