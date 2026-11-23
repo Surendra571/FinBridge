@@ -141,35 +141,34 @@ FinBridge transforms reconciliation into a disciplined, automated, and auditable
 
 ```mermaid
 flowchart TD
-    subgraph Client ["Frontend Layer (Browser)"]
-        UI["React 18 + TypeScript SPA"]
-        Stitch["Stitch Design System (Inter / Navy #101B32 / Cloud #F5F7FB)"]
-        APIClient["Typed ApiClient (JWT + X-Organization-Id)"]
-        UI --- Stitch
+    subgraph Client [Frontend Layer - Browser]
+        UI[React 18 and TypeScript SPA]
+        Stitch[Stitch Design System UI]
+        APIClient[Typed ApiClient]
+        UI --> Stitch
         UI --> APIClient
     end
 
-    subgraph Edge ["Routing & Reverse Proxy"]
-        Vercel["Vercel Edge Network / SPA Rewrites"]
-        ViteDev["Vite Local Dev Server (:5173)"]
+    subgraph Edge [Routing and Edge Network]
+        Vercel[Vercel Edge Network / SPA Rewrites]
+        ViteDev[Vite Local Dev Server]
     end
 
-    subgraph BackendApp ["Backend Layer (FastAPI :8000)"]
-        Router["Versioned API Router (/api/v1)"]
-        AuthDep["Auth & Multi-Tenant Dependency Injection"]
-        RateLimit["Rate Limiting & Correlation ID Middleware"]
+    subgraph BackendApp [Backend Layer - FastAPI Python 3.12]
+        Router[Versioned API Router /api/v1]
+        AuthDep[Auth and Multi-Tenant Dependency]
+        RateLimit[Rate Limiting and Correlation ID]
         
-        subgraph Services ["Domain Service Layer"]
-            StmtSvc["Statement Service (csv_parser / pdf_parser)"]
-            LdgSvc["Ledger Service (ledger_parser / normalizer)"]
-            RecEng["Deterministic Reconciliation Engine"]
-            AISvc["AI Advisory Engine (LangGraph + OpenAI)"]
-            RevSvc["Review & Dual Control Service"]
-            AudSvc["Audit Service (SHA-256 Chainer)"]
-            RepSvc["Report Service (Fixed-Point Rollups)"]
-        end
+        StmtSvc[Statement Service]
+        LdgSvc[Ledger Service]
+        RecEng[Deterministic Reconciliation Engine]
+        AISvc[AI Advisory Engine]
+        RevSvc[Review and Dual Control Service]
+        AudSvc[Audit Service - SHA-256 Chainer]
+        RepSvc[Report Service - Fixed-Point Rollups]
 
-        Router --> RateLimit --> AuthDep
+        Router --> RateLimit
+        RateLimit --> AuthDep
         AuthDep --> StmtSvc
         AuthDep --> LdgSvc
         AuthDep --> RecEng
@@ -179,10 +178,10 @@ flowchart TD
         AuthDep --> RepSvc
     end
 
-    subgraph StorageTier ["Persistence & Infrastructure"]
-        DB[("PostgreSQL 16 (AsyncPG / SQLAlchemy 2.0)")]
-        RedisDB[("Redis 7 (Rate Limiting & Locks)")]
-        FileStore[("File Storage (Local Storage / S3)")]
+    subgraph StorageTier [Persistence and Infrastructure]
+        DB[(PostgreSQL 16 Database)]
+        RedisDB[(Redis 7 Cache and Locks)]
+        FileStore[(Local Storage / S3)]
 
         StmtSvc --> FileStore
         LdgSvc --> FileStore
@@ -309,40 +308,40 @@ Below is the 10-step lifecycle of every transaction processed in FinBridge:
 ### A. High-Level System Architecture
 
 ```mermaid
-graph TB
-    User((Finance Operator))
+flowchart TD
+    User([Finance Operator])
     
-    subgraph FrontendApp ["FinBridge Frontend (React + Vite)"]
-        Nav[Navigation & Org Switcher]
+    subgraph FrontendApp [FinBridge Frontend SPA]
+        Nav[Navigation and Org Switcher]
         Dash[Dashboard View]
-        UploadUI[Statement & Ledger Upload]
+        UploadUI[Statement and Ledger Ingestion UI]
         RecUI[Reconciliation 3-Panel View]
-        RevUI[Review Queue & Maker-Checker]
-        AudUI[Audit Trail Verification]
+        RevUI[Review Queue and Dual Control UI]
+        AudUI[Audit Trail Verification UI]
     end
 
-    subgraph BackendAPI ["FinBridge Backend (FastAPI)"]
-        AuthMiddleware[JWT Auth & Tenant Scoping]
-        IngestRouter[Ingestion Endpoints]
+    subgraph BackendAPI [FinBridge Backend API]
+        AuthMiddleware[JWT Authentication and Tenant Scoping]
+        IngestRouter[Statement and Ledger Endpoints]
         RecRouter[Reconciliation Endpoints]
-        ReviewRouter[Review Endpoints]
-        AuditRouter[Audit Endpoints]
+        ReviewRouter[Review and Approval Endpoints]
+        AuditRouter[Audit and Reports Endpoints]
     end
 
-    subgraph ProcessingEngines ["Engine Layer"]
+    subgraph ProcessingEngines [Engine Layer]
         NormalizerEngine[Normalization Engine]
         DetEngine[Deterministic Python Gatekeeper]
         AIEngine[AI Hypothesis Advisor]
         ChainerEngine[SHA-256 Hash Chainer]
     end
 
-    subgraph Storage ["Storage Layer"]
-        Postgres[("PostgreSQL 16")]
-        RedisStore[("Redis 7")]
+    subgraph Storage [Storage Layer]
+        Postgres[(PostgreSQL 16 Database)]
+        RedisStore[(Redis 7 Cache and Locks)]
     end
 
     User --> FrontendApp
-    FrontendApp -->|HTTPS / JSON| BackendAPI
+    FrontendApp --> BackendAPI
     BackendAPI --> ProcessingEngines
     ProcessingEngines --> Storage
 ```
@@ -362,29 +361,29 @@ sequenceDiagram
     participant DB as PostgreSQL
     participant Audit as Audit Service
 
-    Operator->>Web: Click "Run Reconciliation"
+    Operator->>Web: Run Reconciliation
     Web->>API: POST /api/v1/reconciliation/run
-    API->>DB: Fetch Unmatched Bank & Ledger Records
+    API->>DB: Fetch Unmatched Bank and Ledger Records
     DB-->>API: Return Candidate Records
-    API->>Det: Check Exact Matches (Amount, Date, Currency)
+    API->>Det: Validate Exact Matches
     
-    alt Exact Match Found
-        Det-->>API: Validated (100% Deterministic)
-        API->>DB: Create ReconciliationMatch (STATUS=RECONCILED)
-        API->>Audit: Record Match Event (SHA-256 chained)
-    else Ambiguous or Text Mismatch
-        API->>AI: Request Hypothesis (Normalized Descriptions)
-        AI-->>API: Return Suggestion (Confidence, Reasoning)
+    alt Exact Match Verified
+        Det-->>API: Deterministic Pass
+        API->>DB: Save ReconciliationMatch with STATUS RECONCILED
+        API->>Audit: Record Chained Audit Event
+    else Ambiguous or Description Mismatch
+        API->>AI: Request Hypothesis for Normalized Text
+        AI-->>API: Return Suggestion and Confidence
         API->>Det: Validate Invariants on Suggestion
-        alt Passed Deterministic Gate
-            API->>DB: Route to Review Queue (STATUS=PENDING_REVIEW)
-        else Failed Deterministic Gate
-            API->>DB: Route as Exception (STATUS=EXCEPTION)
+        alt Passed Deterministic Rules
+            API->>DB: Route to Review Queue as PENDING_REVIEW
+        else Failed Deterministic Rules
+            API->>DB: Route to Review Queue as EXCEPTION
         end
     end
 
-    API-->>Web: Return Run Summary (Matched, Pending, Unmatched)
-    Web-->>Operator: Render Dashboard KPI & Progress
+    API-->>Web: Return Run Summary
+    Web-->>Operator: Render Dashboard and Review Queue
 ```
 
 ---
@@ -393,42 +392,44 @@ sequenceDiagram
 
 ```mermaid
 flowchart TD
-    Candidate[Candidate Pair: Bank Tx + Ledger Entry]
+    Candidate[Candidate Pair: Bank Tx and Ledger Entry]
     
-    subgraph AIStep ["AI Advisory Pipeline"]
-        Sanitize[Sanitize & Strip PII]
+    subgraph AIStep [AI Advisory Pipeline]
+        Sanitize[Sanitize and Strip PII]
         Prompt[Build Structured Accounting Prompt]
-        LLMCall[Invoke LLM / Mock Fallback]
+        LLMCall[Invoke LLM or Mock Fallback]
         ExtractJSON[Parse Structured Hypothesis JSON]
         
-        Sanitize --> Prompt --> LLMCall --> ExtractJSON
+        Sanitize --> Prompt
+        Prompt --> LLMCall
+        LLMCall --> ExtractJSON
     end
 
-    subgraph Gatekeeper ["Deterministic Python Core"]
-        Rule1{Currency Parity?}
-        Rule2{Direction Parity?}
-        Rule3{Amount within Tolerance?}
-        Rule4{Date within Window?}
-        Rule5{Duplicate Check Passed?}
+    subgraph Gatekeeper [Deterministic Python Core]
+        Rule1{Currency Parity Check}
+        Rule2{Direction Parity Check}
+        Rule3{Amount Tolerance Check}
+        Rule4{Date Window Check}
+        Rule5{Duplicate Prevention Check}
         
-        Rule1 -->|Yes| Rule2
-        Rule2 -->|Yes| Rule3
-        Rule3 -->|Yes| Rule4
-        Rule4 -->|Yes| Rule5
+        Rule1 -->|Pass| Rule2
+        Rule2 -->|Pass| Rule3
+        Rule3 -->|Pass| Rule4
+        Rule4 -->|Pass| Rule5
     end
 
     Candidate --> AIStep
     ExtractJSON --> Rule1
 
-    Rule1 -->|No| ExceptionQueue[Flag as Exception / Route to Queue]
-    Rule2 -->|No| ExceptionQueue
-    Rule3 -->|No| ExceptionQueue
-    Rule4 -->|No| ExceptionQueue
-    Rule5 -->|No| RejectDuplicate[Hard Reject / Block Transaction]
+    Rule1 -->|Fail| ExceptionQueue[Flag as Exception / Route to Queue]
+    Rule2 -->|Fail| ExceptionQueue
+    Rule3 -->|Fail| ExceptionQueue
+    Rule4 -->|Fail| ExceptionQueue
+    Rule5 -->|Fail| RejectDuplicate[Hard Reject / Block Transaction]
 
-    Rule5 -->|Yes| CheckConf{Confidence >= 0.80?}
-    CheckConf -->|Yes| AutoMatch[Auto-Match Approved]
-    CheckConf -->|No| HumanReview[Route to Maker-Checker Queue]
+    Rule5 -->|Pass| CheckConf{Confidence Threshold Check}
+    CheckConf -->|At least 80 percent| AutoMatch[Auto-Match Approved]
+    CheckConf -->|Below 80 percent| HumanReview[Route to Maker-Checker Queue]
 ```
 
 ---
@@ -436,26 +437,20 @@ flowchart TD
 ### D. Human Approval & Audit Flow
 
 ```mermaid
-stateDiagram-v2
-    [*] --> PendingReview: Ingested & Evaluated
+flowchart TD
+    Start([New Exception Flagged]) --> InReview[In Review Queue]
+    InReview --> Opened[Controller Opens 3-Panel Workspace]
+    Opened --> DraftAdjustment[Draft Fee or FX Variance Adjustment]
+    DraftAdjustment --> DualCheck{Segregation Check: Creator equals Approver}
     
-    state PendingReview {
-        [*] --> AwaitingReview
-        AwaitingReview --> OperatorViewing: Opened by Controller
-        OperatorViewing --> AdjustmentProposed: Draft Fee/FX Variance
-    }
-
-    AdjustmentProposed --> DualControlCheck: Submit for Sign-Off
+    DualCheck -->|Yes - Self Approval Attempt| Blocked[Blocked by Maker-Checker Rule]
+    Blocked --> Reassign[Reassign to Independent Controller]
+    Reassign --> Opened
     
-    state DualControlCheck <<choice>>
-    DualControlCheck --> ApprovalBlocked: Creator == Approver (Dual Control Violation)
-    DualControlCheck --> Approved: Creator != Approver
-
-    ApprovalBlocked --> OperatorViewing: Assign to Different Reviewer
-    
-    Approved --> MatchCommitted: Commit to Ledger
-    MatchCommitted --> HashChainGenerated: SHA-256 Block Chained
-    HashChainGenerated --> [*]: Reconciled & Audited
+    DualCheck -->|No - Dual Control Verified| Approved[Approval Granted]
+    Approved --> Commit[Commit Reconciliation to Ledger]
+    Commit --> HashBlock[Compute SHA-256 Audit Block Hash]
+    HashBlock --> Done([Reconciled and Immutable])
 ```
 
 ---
@@ -568,30 +563,30 @@ FinBridge/
 
 ```mermaid
 erDiagram
-    ORGANIZATION ||--o{ ORGANIZATION_MEMBERSHIP : "employs"
-    ORGANIZATION ||--o{ BANK_ACCOUNT : "maintains"
-    ORGANIZATION ||--o{ BANK_STATEMENT : "receives"
-    ORGANIZATION ||--o{ LEDGER_BATCH : "imports"
-    ORGANIZATION ||--o{ RECONCILIATION_RUN : "executes"
-    ORGANIZATION ||--o{ AUDIT_LOG : "records"
+    ORGANIZATION ||--o{ ORGANIZATION_MEMBERSHIP : employs
+    ORGANIZATION ||--o{ BANK_ACCOUNT : maintains
+    ORGANIZATION ||--o{ BANK_STATEMENT : receives
+    ORGANIZATION ||--o{ LEDGER_BATCH : imports
+    ORGANIZATION ||--o{ RECONCILIATION_RUN : executes
+    ORGANIZATION ||--o{ AUDIT_LOG : records
 
-    USER ||--o{ ORGANIZATION_MEMBERSHIP : "belongs to"
-    USER ||--o{ USER_SESSION : "authorizes"
-    USER ||--o{ REVIEW_NOTE : "authors"
+    USER ||--o{ ORGANIZATION_MEMBERSHIP : belongs_to
+    USER ||--o{ USER_SESSION : authorizes
+    USER ||--o{ REVIEW_NOTE : authors
 
-    BANK_ACCOUNT ||--o{ BANK_TRANSACTION : "contains"
-    BANK_STATEMENT ||--o{ BANK_TRANSACTION : "extracts"
+    BANK_ACCOUNT ||--o{ BANK_TRANSACTION : contains
+    BANK_STATEMENT ||--o{ BANK_TRANSACTION : extracts
 
-    LEDGER_BATCH ||--o{ LEDGER_ENTRY : "contains"
+    LEDGER_BATCH ||--o{ LEDGER_ENTRY : contains
 
-    RECONCILIATION_RUN ||--o{ RECONCILIATION_MATCH : "generates"
-    RECONCILIATION_RUN ||--o{ REVIEW_ITEM : "flags"
+    RECONCILIATION_RUN ||--o{ RECONCILIATION_MATCH : generates
+    RECONCILIATION_RUN ||--o{ REVIEW_ITEM : flags
 
-    BANK_TRANSACTION ||--o| RECONCILIATION_MATCH : "matched in"
-    LEDGER_ENTRY ||--o| RECONCILIATION_MATCH : "matched in"
+    BANK_TRANSACTION ||--o| RECONCILIATION_MATCH : matched_in
+    LEDGER_ENTRY ||--o| RECONCILIATION_MATCH : matched_in
 
-    REVIEW_ITEM ||--o{ ADJUSTMENT_PROPOSAL : "contains"
-    REVIEW_ITEM ||--o{ REVIEW_NOTE : "has"
+    REVIEW_ITEM ||--o{ ADJUSTMENT_PROPOSAL : contains
+    REVIEW_ITEM ||--o{ REVIEW_NOTE : has
 ```
 
 ### Table Specifications & Data Safeguards
