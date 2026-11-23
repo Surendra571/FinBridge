@@ -30,7 +30,7 @@ class ManualReviewItem(Base):
     __tablename__ = "manual_reviews"
     __table_args__ = (
         Index("ix_manual_reviews_org_status", "organization_id", "status"),
-        Index("ix_manual_reviews_category", "organization_id", "category"),
+        Index("ix_manual_reviews_org_category", "organization_id", "category"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
