@@ -60,3 +60,33 @@ async def readiness_probe(db: AsyncSession = Depends(get_db)) -> JSONResponse:
     health_status["status"] = "ok" if is_healthy else "degraded"
 
     return JSONResponse(status_code=status_code, content=health_status)
+
+
+@router.api_route("/setup-db", methods=["GET", "POST"], summary="Initialize schema and seed demo data")
+async def setup_db(db: AsyncSession = Depends(get_db)):
+    """Creates all database tables and seeds initial demo users and organizations."""
+    try:
+        from app.db.base import Base
+        from app.db.session import get_engine
+        import app.models  # noqa
+        engine = get_engine()
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        from scripts.seed_demo_data import seed
+        await seed()
+        user_count = (await db.execute(text("SELECT count(*) FROM users"))).scalar()
+        return {
+            "status": "ok",
+            "message": "Database tables created and seeded successfully",
+            "users_count": user_count,
+        }
+    except Exception as exc:
+        import traceback
+        return JSONResponse(
+            status_code=500,
+            content={
+                "status": "error",
+                "error": str(exc),
+                "traceback": traceback.format_exc(),
+            },
+        )
