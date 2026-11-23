@@ -119,16 +119,31 @@ def require_role(allowed_roles: List[str]) -> Callable:
     """
     Dependency factory asserting that the user's role in the active
     organization matches one of the allowed roles.
+    Includes CONTROLLER as an authorized finance managerial role.
     """
+    normalized_allowed = {r.upper() for r in allowed_roles}
+    if "FINANCE_MANAGER" in normalized_allowed or "ACCOUNTANT" in normalized_allowed:
+        normalized_allowed.add("CONTROLLER")
+
     async def role_checker(
         org_and_membership: tuple[Organization, OrganizationMembership] = Depends(get_current_org_membership),
     ) -> tuple[Organization, OrganizationMembership]:
         _, membership = org_and_membership
-        if membership.role not in allowed_roles:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Access denied. Requires one of roles: {', '.join(allowed_roles)}.",
-            )
-        return org_and_membership
+        user_role = (membership.role or "").upper()
+
+        if user_role == "ADMIN" or user_role in normalized_allowed:
+            return org_and_membership
+
+        if user_role == "CONTROLLER" and (
+            "FINANCE_MANAGER" in normalized_allowed
+            or "CONTROLLER" in normalized_allowed
+            or "ACCOUNTANT" in normalized_allowed
+        ):
+            return org_and_membership
+
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Access denied. Requires one of roles: {', '.join(allowed_roles)}.",
+        )
 
     return role_checker
