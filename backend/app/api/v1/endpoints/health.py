@@ -63,7 +63,7 @@ async def readiness_probe(db: AsyncSession = Depends(get_db)) -> JSONResponse:
 
 
 @router.api_route("/setup-db", methods=["GET", "POST"], summary="Initialize schema and seed demo data")
-async def setup_db(db: AsyncSession = Depends(get_db)):
+async def setup_db(db: AsyncSession = Depends(get_db), reset: bool = False):
     """Creates all database tables and seeds initial demo users and organizations."""
     try:
         from app.db.base import Base
@@ -71,6 +71,8 @@ async def setup_db(db: AsyncSession = Depends(get_db)):
         import app.models  # noqa
         engine = get_engine()
         async with engine.begin() as conn:
+            if reset and "sqlite" not in settings.DATABASE_URL:
+                await conn.execute(text("DROP SCHEMA public CASCADE; CREATE SCHEMA public;"))
             await conn.run_sync(Base.metadata.create_all)
         from scripts.seed_demo_data import seed
         await seed()
@@ -79,6 +81,7 @@ async def setup_db(db: AsyncSession = Depends(get_db)):
             "status": "ok",
             "message": "Database tables created and seeded successfully",
             "users_count": user_count,
+            "version": settings.APP_VERSION,
         }
     except Exception as exc:
         import traceback
